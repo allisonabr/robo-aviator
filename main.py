@@ -4,6 +4,8 @@ import json
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.common.by import By
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
 
 def iniciar_navegador():
     chrome_options = Options()
@@ -38,23 +40,51 @@ def vigiar_aviator():
 
     print("[Vigiando Fluxo]: Direcionando para a tela do Aviator...")
     driver.get(url_jogo)
-    time.sleep(12)
+    time.sleep(15)
     
+    # Tenta entrar no iFrame do jogo se ele existir na página
+    try:
+        iframes = driver.find_elements(By.TAG_NAME, "iframe")
+        if len(iframes) > 0:
+            driver.switch_to.frame(iframes[0])
+            print("[Vigiando Fluxo]: Conectado com sucesso ao bloco interno do jogo.")
+    except Exception:
+        print("[Vigiando Fluxo]: Continuando na janela principal...")
+
     ultimo_resultado = None
     
     while True:
         try:
-            elemento_historico = driver.find_element(By.CSS_SELECTOR, ".stats-block .bubble-item, .payouts-block .bubble")
-            resultado_atual = elemento_historico.text.strip()
+            # Lista de seletores comuns que contêm o histórico de velas/multiplicadores
+            seletores = [
+                "app-stats-widget .bubble-item", 
+                ".stats-block .bubble-item", 
+                ".payouts-block .bubble",
+                ".app-stats-widget .auxiliary-font"
+            ]
             
-            if resultado_atual and resultado_atual != ultimo_resultado:
-                ultimo_resultado = resultado_atual
-                print(f"[Vigiando Fluxo]: Nova decolagem detectada! Multiplicador: {resultado_atual}")
+            elemento_historico = None
+            for seletor in seletores:
+                try:
+                    elemento_historico = driver.find_element(By.CSS_SELECTOR, seletor)
+                    if elemento_historico:
+                        break
+                except:
+                    continue
+            
+            if elemento_historico:
+                resultado_atual = elemento_historico.text.strip()
                 
-        except Exception:
+                if resultado_atual and resultado_atual != ultimo_resultado:
+                    ultimo_resultado = resultado_atual
+                    print(f"[Vigiando Fluxo]: Nova decolagem detectada! Multiplicador: {resultado_atual}")
+            else:
+                print("[Vigiando Fluxo]: Aguardando próxima decolagem do avião...")
+                
+        except Exception as erro_loop:
             print("[Vigiando Fluxo]: Aguardando próxima decolagem do avião...")
             
-        time.sleep(4)
+        time.sleep(3)
 
 if __name__ == "__main__":
     vigiar_aviator()
