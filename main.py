@@ -1,59 +1,60 @@
-import urllib.request
-import json
+import os
 import time
-import re
+import json
+from selenium import webdriver
+from selenium.webdriver.chrome.options import Options
+from selenium.webdriver.common.by import By
 
-LINK_DO_ENDPOINT = "https://rapidapi.com"
-CHAVE_X_RAPIDAPI = "1e287c9da0msh2d776f7d9e3145fp13c550jsn12bd3018dcd8"
+def iniciar_navegador():
+    chrome_options = Options()
+    chrome_options.add_argument("--headless")
+    chrome_options.add_argument("--no-sandbox")
+    chrome_options.add_argument("--disable-dev-shm-usage")
+    chrome_options.add_argument("user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
+    chrome_options.binary_location = "/usr/bin/google-chrome"
+    return webdriver.Chrome(options=chrome_options)
 
-print("🚀 SENSOR DE ELITE DIRETRIZ INICIALIZADO NA NUVEM DA RENDER!")
-print("==================================================================")
-
-def efetuar_varredura_total():
+def vigiar_aviator():
+    driver = iniciar_navegador()
+    url_base = "https://estrelabet.bet.br"
+    url_jogo = "https://estrelabet.bet.br/gameplay/aviator"
+    
+    print("[Vigiando Fluxo]: Acessando a página inicial para injetar credenciais...")
+    driver.get(url_base)
+    time.sleep(5)
+    
     try:
-        # TENTATIVA 1: Tenta ler a sua RapidAPI contratada
-        req = urllib.request.Request(LINK_DO_ENDPOINT)
-        req.add_header("x-rapidapi-key", CHAVE_X_RAPIDAPI)
-        req.add_header("x-rapidapi-host", "://rapidapi.com")
-        req.add_header("Content-Type", "application/json")
-        req.add_header("User-Agent", "Mozilla/5.0")
-        
-        with urllib.request.urlopen(req, timeout=6) as response:
-            resposta_texto = response.read().decode('utf-8').strip()
-            if resposta_texto:
-                dados = json.loads(resposta_texto)
-                print(f"📥 [DADOS RECEBIDOS VIA RAPIDAPI]: {dados}")
-                return
-    except Exception:
-        pass
+        with open("cookies.txt", "r") as f:
+            cookies = json.load(f)
+            for cookie in cookies:
+                if 'sameSite' in cookie:
+                    if cookie['sameSite'] not in ["Strict", "Lax", "None"]:
+                        cookie['sameSite'] = "Lax"
+                driver.add_cookie(cookie)
+        print("[Vigiando Fluxo]: Cookies injetados com sucesso!")
+    except Exception as e:
+        print(f"[Erro]: Falha ao carregar o arquivo de cookies: {e}")
+        return
 
-    try:
-        # TENTATIVA 2 (CONTINGÊNCIA PRO): Se a API falhar, busca direto no espelho global público
-        url_mirror = "https://spribe.io"
-        headers = {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-            'Accept': 'application/json, text/plain, */*',
-            'Referer': 'https://spribe.io'
-        }
-        req_mirror = urllib.request.Request(url_mirror, headers=headers)
-        with urllib.request.urlopen(req_mirror, timeout=6) as response:
-            dados = json.loads(response.read().decode())
-            velas = []
-            if 'data' in dados and isinstance(dados['data'], list):
-                for item in dados['data'][:8]:
-                    if 'multiplier' in item:
-                        velas.append(f"{float(item['multiplier'])}x")
+    print("[Vigiando Fluxo]: Direcionando para a tela do Aviator...")
+    driver.get(url_jogo)
+    time.sleep(12)
+    
+    ultimo_resultado = None
+    
+    while True:
+        try:
+            elemento_historico = driver.find_element(By.CSS_SELECTOR, ".stats-block .bubble-item, .payouts-block .bubble")
+            resultado_atual = elemento_historico.text.strip()
             
-            if velas:
-                print(f"📈 [SINAL ADQUIRIDO EM TEMPO REAL]: {velas}")
-                return
-    except Exception:
-        pass
-        
-    # Se ambos os servidores estiverem em delay de segundos, avisa na tela para você saber que está rodando
-    print("⏱️ [Vigiando Fluxo]: Aguardando próxima decolagem do avião...", flush=True)
+            if resultado_atual and resultado_atual != ultimo_resultado:
+                ultimo_resultado = resultado_atual
+                print(f"[Vigiando Fluxo]: Nova decolagem detectada! Multiplicador: {resultado_atual}")
+                
+        except Exception:
+            print("[Vigiando Fluxo]: Aguardando próxima decolagem do avião...")
+            
+        time.sleep(4)
 
-# Loop infinito travado de 4 em 4 segundos
-while True:
-    efetuar_varredura_total()
-    time.sleep(4)
+if __name__ == "__main__":
+    vigiar_aviator()
